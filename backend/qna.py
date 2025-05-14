@@ -3,14 +3,17 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 from database import get_pdf_content
 
+#load the .env file
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel("gemini-1.5-flash")
 
+# chuck maker make the chuck of 300 words 
 def chunk_text(text, max_words=300):
     words = text.split()
     return [" ".join(words[i:i + max_words]) for i in range(0, len(words), max_words)]
 
+#from the chucks which is most relevant will be chooosen and passed to generate the final answer
 def extract_relevant_info(chunk, question):
     prompt = f"""
 You are a helpful assistant. Based only on the following document chunk, extract any information relevant to the question. 
@@ -31,6 +34,7 @@ RELEVANT INFORMATION (or "NONE"):
         print(f"[Chunk Error] {e}")
         return None
 
+#generates the final answers
 def generate_final_answer(extracted_info, question):
     prompt = f"""
 You are a helpful assistant. Based on the following extracted information, provide a single, clear, and solid answer to the question.
