@@ -1,7 +1,7 @@
 import sqlite3
 from datetime import datetime
 
-
+#database table makiing 
 def initialize_db():
     with sqlite3.connect("pdfs.db", timeout=10) as conn:
         cursor = conn.cursor()
@@ -15,7 +15,7 @@ def initialize_db():
         """)
         conn.commit()
 
-
+#database table insertion of the filenmame datetime or updation
 def insert_pdf(filename, content=""):
     upload_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with sqlite3.connect("pdfs.db", timeout=10) as conn:
@@ -35,14 +35,14 @@ def insert_pdf(filename, content=""):
             )
         conn.commit()
 
-
+#get pdf filename as i have to send the filename to be in the dropdown
 def get_pdf():
     with sqlite3.connect("pdfs.db", timeout=10) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT filename FROM pdf")
         return [row[0] for row in cursor.fetchall()]
 
-
+#get pdf contents that will go to the ai questio answers as question is passed with the filename
 def get_pdf_content(filename):
     with sqlite3.connect("pdfs.db", timeout=10) as conn:
         cursor = conn.cursor()
