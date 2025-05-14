@@ -20,6 +20,7 @@ app.add_middleware(
 
 initialize_db()
 
+# This folder will be temporary (ephemeral storage on Render) not used aws :(
 UPLOAD_DIR = "tmp/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
