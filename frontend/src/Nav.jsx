@@ -6,6 +6,7 @@ function Nav({ selectedFile, setSelectedFile }) {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  //fetchs the uploaded files from the database from backend
   const fetchUploadedFiles = async (file=null) => {
     try {
       const res = await fetch("http://localhost:8000/pdfs", {
@@ -25,7 +26,7 @@ function Nav({ selectedFile, setSelectedFile }) {
       console.error("Failed to fetch uploaded files:", err);
     }
   };
-
+// good for intial fetching as system loads
   useEffect(() => {
     fetchUploadedFiles();
   }, []);
@@ -33,7 +34,7 @@ function Nav({ selectedFile, setSelectedFile }) {
   const handleButtonClick = () => {
     fileInputRef.current.click(); 
   };
-
+// post request so send the file info to backend
   const handleFileChange = async (e) => {
     setLoading(true);
     const file = e.target.files[0];
