@@ -8,6 +8,7 @@ function Container({ selectedFile }) {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  //input of the question just uesd for styling purpose
   const handleInput = (e) => {
     const textarea = e.target;
     textarea.style.height = "auto";
@@ -15,6 +16,7 @@ function Container({ selectedFile }) {
     setText(textarea.value);
   };
 
+  // used to state to the user which upload file he is currectly asking for the qna
   useEffect(() => {
     if (selectedFile) {
       setMessages((prevMessages) => [
@@ -27,7 +29,7 @@ function Container({ selectedFile }) {
     }
   }, [selectedFile]);
 
-
+  // handle submition of the question send the filename too the backend we get a ai response but we formate the response to as the values are ** for bold so also used reactMarkdown 
   const handleSubmit = async () => {
     if (text.trim() === "") return;
     const userMessage = { type: "user", content: text };
@@ -71,6 +73,7 @@ function Container({ selectedFile }) {
     }
   };
 
+  //as enter presssed the handleSubmit function works so after writing the question we press enter comman formate
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
