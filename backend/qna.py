@@ -53,6 +53,7 @@ Only use the information provided above. If insufficient, acknowledge that.
     except Exception as e:
         return f"[Final Answer Error] {e}"
 
+# the question and filename is passed here and the answer is generated from above functions
 def answer_qna(filename, question):
     document_text = get_pdf_content(filename)
     if not document_text:
