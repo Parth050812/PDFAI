@@ -42,7 +42,7 @@ function Container({ selectedFile }) {
       if (!selectedFile) {
         throw new Error("Please select a file first");
       }
-      const res = await fetch("http://localhost:8000/ask", {
+      const res = await fetch("https://pdfai-backend-h0cb.onrender.com/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
