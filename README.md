@@ -1,4 +1,4 @@
-# PDF 
+# PDF and AI qna
 
 PDFAI is an AI-powered PDF assistant that enables users to upload PDF files, extract their content, and ask questions related to the documents. It utilizes Google’s **Gemini API** to provide intelligent answers based on document content, using a manual **chunking strategy (max 300 words)** — all without requiring a vector database.
 
