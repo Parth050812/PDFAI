@@ -18,6 +18,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def back():
+    return{
+        "success": "backend running"
+    }
+
 initialize_db()
 
 # This folder will be temporary (ephemeral storage on Render) not used aws :(
