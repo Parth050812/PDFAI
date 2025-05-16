@@ -83,6 +83,9 @@ Have used sqlite for database things just stores the title , datetime of upload 
 
 
 ## Application Architecture Overview
+### diagram of Workflow
+![new HLD(1)](https://github.com/user-attachments/assets/bcca2a45-f2a2-4dc9-8c17-71aaaacb34ef)
+
 ### 1. Frontend (React + Vite)<br>
   Responsibilities:
   - Allows users to upload PDF files.
