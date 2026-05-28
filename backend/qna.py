@@ -6,7 +6,7 @@ from database import get_pdf_content
 #load the .env file
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-1.5-flash")
+model = genai.GenerativeModel("gemini-2.5-flash")
 
 # chuck maker make the chuck of 300 words 
 def chunk_text(text, max_words=300):
