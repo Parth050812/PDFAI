@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import "./BackendStatus.css";
+import "./Backendstatus.css";
 
 // Keep in sync with the url in Nav.jsx and Container.jsx
 const url = "https://pdfai-backend-h0cb.onrender.com";
@@ -12,7 +12,7 @@ const READY_VISIBLE_MS = 1500; // how long "ready" stays on screen
 
 // Pings the backend until it responds. Render's free tier sleeps when idle,
 // so the first request after a while can take a minute.
-function BackendStatus() {
+function Backendstatus() {
   const [status, setStatus] = useState("idle"); // idle | waiting | ready
 
   useEffect(() => {
@@ -75,4 +75,4 @@ function BackendStatus() {
   );
 }
 
-export default BackendStatus;
+export default Backendstatus;

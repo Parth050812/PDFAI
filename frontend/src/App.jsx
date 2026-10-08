@@ -2,7 +2,7 @@ import { useState } from 'react'
 import './App.css'
 import Nav from './Nav';
 import Container from './Container';
-import BackendStatus from './BackendStatus';
+import Backendstatus from './Backendstatus';
 
 function App() {
   const [selectedFile, setSelectedFile] = useState('');
@@ -10,7 +10,7 @@ function App() {
   return (
     <>
       <div className="bruh">
-      <BackendStatus/>
+      <Backendstatus/>
       <Nav selectedFile={selectedFile} setSelectedFile={setSelectedFile}/>
       <Container selectedFile={selectedFile}/>
       </div>
