@@ -6,13 +6,20 @@ import uvicorn
 from database import initialize_db, insert_pdf, get_pdf, get_pdf_content
 from extract import extract_text
 from qna import answer_qna
+from pydantic import BaseModel, Field
 
+class QnARequest(BaseModel):
+    filename: str
+    question: str
+    history: list[dict[str, str]] = Field(default_factory=list)
+    
 app = FastAPI()
 
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://pdfai-txn9.onrender.com"],
+    #allow_origins=["https://pdfai-txn9.onrender.com"],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,10 +57,12 @@ def list_pdfs():
 
 #the psot method of the question asked by the user to ai for the given pdf name
 @app.post("/ask")
-async def ask_question(data: dict):
-    filename = data.get("filename")
-    question = data.get("question")
-    answer = answer_qna(filename, question)
+async def ask_question(req: QnARequest):
+    answer = answer_qna(
+        filename=req.filename, 
+        question=req.question, 
+        chat_history=req.history
+    )
     return {"answer": answer}
 
 

@@ -1,74 +1,156 @@
 import os
-import google.generativeai as genai
+import json
+import numpy as np
+import faiss
+from google import genai
+from google.genai.errors import APIError
 from dotenv import load_dotenv
 from database import get_pdf_content
 
-#load the .env file
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-model = genai.GenerativeModel("gemini-2.5-flash")
+client = genai.Client()
 
-# chuck maker make the chuck of 300 words 
-def chunk_text(text, max_words=300):
+INDEX_DIR = "vector_stores"
+os.makedirs(INDEX_DIR, exist_ok=True)
+
+
+def get_file_paths(filename: str) -> tuple[str, str]:
+    """Returns persistent disk file paths for a given PDF's index and text chunks."""
+    safe_name = os.path.splitext(filename)[0]
+    index_path = os.path.join(INDEX_DIR, f"{safe_name}.index")
+    chunks_path = os.path.join(INDEX_DIR, f"{safe_name}_chunks.json")
+    return index_path, chunks_path
+
+
+def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
+    """Splits long text into overlapping chunks for indexing."""
     words = text.split()
-    return [" ".join(words[i:i + max_words]) for i in range(0, len(words), max_words)]
+    chunks = []
+    for i in range(0, len(words), chunk_size - overlap):
+        chunk = " ".join(words[i : i + chunk_size])
+        if chunk:
+            chunks.append(chunk)
+    return chunks
 
-#from the chucks which is most relevant will be chooosen and passed to generate the final answer
-def extract_relevant_info(chunk, question):
-    prompt = f"""
-You are a helpful assistant. Based only on the following document chunk, extract any information relevant to the question. 
-If the chunk doesn't contain relevant information, respond with "NONE".
-DOCUMENT CHUNK:
-{chunk}
 
-QUESTION:
-{question}
+def get_embedding(text: str) -> np.ndarray:
+    """Generates vector embedding for a given text snippet using google-genai."""
+    response = client.models.embed_content(
+        model="gemini-embedding-2",
+        contents=text,
+    )
+    # Convert list of floats to a float32 numpy array for FAISS
+    embedding = np.array(response.embeddings[0].values, dtype=np.float32)
+    return embedding
 
-RELEVANT INFORMATION (or "NONE"):
-"""
-    try:
-        response = model.generate_content(prompt)
-        answer = response.text.strip()
-        return None if answer.upper() == "NONE" else answer
-    except Exception as e:
-        print(f"[Chunk Error] {e}")
-        return None
 
-#generates the final answers
-def generate_final_answer(extracted_info, question):
-    prompt = f"""
-You are a helpful assistant. Based on the following extracted information, provide a single, clear, and solid answer to the question.
-Give a Bold Title at the beginning using the Question asked. Bold necessary important part to give depth of the importance
-EXTRACTED INFORMATION:
-{extracted_info}
+def build_faiss_index(chunks: list[str]) -> tuple[faiss.IndexFlatL2, np.ndarray]:
+    """Embeds all chunks in a single batch call and builds a FAISS L2 vector index."""
+    # Efficient batch embedding call
+    response = client.models.embed_content(
+        model="gemini-embedding-2",
+        contents=chunks,
+    )
+    embeddings_matrix = np.array(
+        [e.values for e in response.embeddings], 
+        dtype=np.float32
+    )
 
-QUESTION:
-{question}
+    # Dimension of vectors
+    dimension = embeddings_matrix.shape[1]
 
-Only use the information provided above. If insufficient, acknowledge that.
-"""
-    try:
-        response = model.generate_content(prompt)
-        return response.text.strip()
-    except Exception as e:
-        return f"[Final Answer Error] {e}"
+    # Initialize L2 distance index
+    index = faiss.IndexFlatL2(dimension)
+    index.add(embeddings_matrix)
 
-# the question and filename is passed here and the answer is generated from above functions
-def answer_qna(filename, question):
+    return index, embeddings_matrix
+
+
+def get_or_create_vector_store(filename: str) -> tuple[faiss.IndexFlatL2, list[str]]:
+    """Loads FAISS index and chunks from disk if available; builds and saves them if not."""
+    index_path, chunks_path = get_file_paths(filename)
+
+    # 1. Load from disk if previously built
+    if os.path.exists(index_path) and os.path.exists(chunks_path):
+        index = faiss.read_index(index_path)
+        with open(chunks_path, "r", encoding="utf-8") as f:
+            chunks = json.load(f)
+        return index, chunks
+
+    # 2. Extract content, chunk, build index, and persist to disk
     document_text = get_pdf_content(filename)
-    if not document_text:
-        return "Document not found in the database."
+    if not document_text or not document_text.strip():
+        raise ValueError("The document is empty or could not be loaded.")
 
     chunks = chunk_text(document_text)
-    relevant_info = []
+    index, _ = build_faiss_index(chunks)
 
-    for chunk in chunks:
-        info = extract_relevant_info(chunk, question)
-        if info:
-            relevant_info.append(info)
+    # Save index and chunks to disk
+    faiss.write_index(index, index_path)
+    with open(chunks_path, "w", encoding="utf-8") as f:
+        json.dump(chunks, f, ensure_ascii=False)
 
-    if not relevant_info:
-        return "No relevant information found in the document to answer this question."
+    return index, chunks
 
-    combined_info = "\n\n".join(relevant_info)
-    return generate_final_answer(combined_info, question)
+
+def retrieve_relevant_chunks(
+    question: str, 
+    index: faiss.IndexFlatL2, 
+    chunks: list[str], 
+    top_k: int = 3
+) -> list[str]:
+    """Embeds query and retrieves top-K most similar text chunks."""
+    query_vector = get_embedding(question).reshape(1, -1)
+    distances, indices = index.search(query_vector, top_k)
+
+    retrieved = [chunks[i] for i in indices[0] if i < len(chunks)]
+    return retrieved
+
+
+# qna.py
+
+def answer_qna(
+    filename: str, 
+    question: str, 
+    chat_history: list[dict[str, str]] = None
+) -> str:
+    # 1. Fetch persistent FAISS index and chunks
+    try:
+        index, chunks = get_or_create_vector_store(filename)
+    except ValueError as err:
+        return str(err)
+
+    # 2. Search relevant chunks for the current question
+    relevant_chunks = retrieve_relevant_chunks(question, index, chunks, top_k=3)
+    context = "\n\n---\n\n".join(relevant_chunks)
+
+    # 3. Format chat history into text
+    formatted_history = ""
+    if chat_history:
+        # Keep recent 4-6 messages for context
+        recent = chat_history[-6:]
+        for msg in recent:
+            role = "User" if msg.get("role") == "user" else "Assistant"
+            formatted_history += f"{role}: {msg.get('content')}\n"
+
+    # 4. Construct prompt with context AND conversation history
+    prompt = f"""
+You are a helpful assistant having a conversation with a user about the document context below.
+
+Document Context:
+{context}
+
+Previous Conversation:
+{formatted_history if formatted_history else "No previous conversation."}
+
+Current User Question:
+{question}
+
+Answer the current question using the document context and conversation history. If the information is not in the context or conversation, state that you don't know.
+"""
+
+    response = client.models.generate_content(
+        model="gemini-3.5-flash",
+        contents=prompt,
+    )
+    return response.text

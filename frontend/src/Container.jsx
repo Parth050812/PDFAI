@@ -1,4 +1,4 @@
-import React, { useEffect,useState } from "react";
+import React, { useEffect, useState } from "react";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ReactMarkdown from "react-markdown";
 import "./Container.css";
@@ -8,7 +8,7 @@ function Container({ selectedFile }) {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  //input of the question just uesd for styling purpose
+  // Auto-resize textarea for user typing
   const handleInput = (e) => {
     const textarea = e.target;
     textarea.style.height = "auto";
@@ -16,11 +16,10 @@ function Container({ selectedFile }) {
     setText(textarea.value);
   };
 
-  // used to state to the user which upload file he is currectly asking for the qna
+  // Reset chat history and post info message whenever selected document changes
   useEffect(() => {
     if (selectedFile) {
-      setMessages((prevMessages) => [
-        ...prevMessages,
+      setMessages([
         {
           type: "info",
           content: `**Ask any question from " \`${selectedFile}\` "**`,
@@ -29,12 +28,26 @@ function Container({ selectedFile }) {
     }
   }, [selectedFile]);
 
-  // handle submition of the question send the filename too the backend we get a ai response but we formate the response to as the values are ** for bold so also used reactMarkdown 
+  // Format existing messages to backend chat history standard
+  const getFormattedHistory = () => {
+    return messages
+      .filter((msg) => msg.type === "user" || msg.type === "ai")
+      .map((msg) => ({
+        role: msg.type === "user" ? "user" : "assistant",
+        content: msg.content,
+      }));
+  };
+
   const handleSubmit = async () => {
     if (text.trim() === "") return;
-    const userMessage = { type: "user", content: text };
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
+
     const userText = text;
+    const userMessage = { type: "user", content: userText };
+    
+    // Prepare history snapshot before state update
+    const historyPayload = getFormattedHistory();
+
+    setMessages((prevMessages) => [...prevMessages, userMessage]);
     setText("");
     setIsLoading(true);
 
@@ -42,12 +55,16 @@ function Container({ selectedFile }) {
       if (!selectedFile) {
         throw new Error("Please select a file first");
       }
-      const res = await fetch("https://pdfai-backend-h0cb.onrender.com/ask", {
+      const url = "https://pdfai-backend-h0cb.onrender.com";
+      //const url = "http://127.0.0.1:8000";
+      const ask = url + "/ask";
+      const res = await fetch(ask, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           filename: selectedFile,
           question: userText,
+            history: historyPayload, // Correctly mapped chat history payload
         }),
       });
 
@@ -57,7 +74,9 @@ function Container({ selectedFile }) {
 
       const data = await res.json();
       let formattedAnswer = data.answer;
-      formattedAnswer = data.answer.replace(/\*\s+\*\*/g, '* **').replace(/\n{2,}/g, '\n');       
+      formattedAnswer = data.answer
+        .replace(/\*\s+\*\*/g, "* **")
+        .replace(/\n{2,}/g, "\n");
 
       setMessages((prevMessages) => [
         ...prevMessages,
@@ -73,7 +92,6 @@ function Container({ selectedFile }) {
     }
   };
 
-  //as enter presssed the handleSubmit function works so after writing the question we press enter comman formate
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -84,25 +102,26 @@ function Container({ selectedFile }) {
   return (
     <div className="con">
       <div className="content">
-        {messages.map((msg, index) => (
+        {messages.map((msg, index) =>
           msg.type === "user" ? (
             <div key={index} className="message-row">
-                <div className="message">{msg.content}</div>
+              <div className="message">{msg.content}</div>
+            </div>
+          ) : msg.type === "ai" ? (
+            <div key={index} className="ai-message-row">
+              <div className="ai-message">
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
+              </div>
             </div>
           ) : (
-            msg.type === "ai" ? (
-              <div key={index} className="ai-message-row">
-                <div className="ai-message"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
+            <div key={index} className="pdf-message-row">
+              <div className="pdf-message">
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
               </div>
-              ) : (
-                <div key={index} className="pdf-message-row">
-                  <div className="pdf-message"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
-                </div>
-              )
-            
+            </div>
           )
-        ))}
-        {isLoading && ( 
+        )}
+        {isLoading && (
           <div className="ai-message-row">
             <div className="ai-message">Thinking...</div>
           </div>
@@ -116,9 +135,9 @@ function Container({ selectedFile }) {
           placeholder="Send a Message ..."
           disabled={isLoading}
         ></textarea>
-        <button 
-          id="bh" 
-          onClick={handleSubmit} 
+        <button
+          id="bh"
+          onClick={handleSubmit}
           disabled={isLoading || text.trim() === ""}
         >
           <ArrowForwardIcon />

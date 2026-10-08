@@ -7,9 +7,12 @@ function Nav({ selectedFile, setSelectedFile }) {
   const [loading, setLoading] = useState(false);
 
   //fetchs the uploaded files from the database from backend
+  const url = "https://pdfai-backend-h0cb.onrender.com";
+  //const url = "http://127.0.0.1:8000"
   const fetchUploadedFiles = async (file=null) => {
     try {
-      const res = await fetch("https://pdfai-backend-h0cb.onrender.com/pdfs", {
+      const pdf = url+"/pdfs"
+      const res = await fetch(pdf, {
         method: "GET",
       });
       const data = await res.json(); 
@@ -42,7 +45,8 @@ function Nav({ selectedFile, setSelectedFile }) {
       const formData = new FormData();
       formData.append("file", file);
       try {
-        const res = await fetch("https://pdfai-backend-h0cb.onrender.com/upload", {
+        const upload = url+"/upload"
+        const res = await fetch(upload, {
           method: "POST",
           body: formData,
         });
