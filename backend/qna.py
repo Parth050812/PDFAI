@@ -23,7 +23,7 @@ EMBEDDING_MODEL = "gemini-embedding-2"
 # GEMINI_MODELS in .env, e.g. GEMINI_MODELS=gemini-3.1-flash-lite,gemini-3.5-flash
 GENERATION_MODELS = [
     m.strip()
-    for m in os.getenv("GEMINI_MODELS", "gemini-3.1-flash-lite,gemini-3.5-flash").split(",")
+    for m in os.getenv("GEMINI_MODELS", "gemini-3.1-flash-lite,gemini-3.6-flash").split(",")
     if m.strip()
 ]
 
